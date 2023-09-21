@@ -1,5 +1,18 @@
 const express = require('express')
+const morgan = require('morgan')
+
 const app = express()
+
+
+// 3.7-3.8 Show the data sent in HTTP POST requests
+morgan.token('post-data', (req) => {
+  if (req.method === 'POST') {
+    return JSON.stringify(req.body);
+  }
+  return ' ';
+});
+
+app.use(morgan(':method :url :status :res[content-length] - :response-time ms :post-data'));
 
 app.use(express.json())
 
@@ -66,7 +79,7 @@ const generateId = () => {
 
 app.post('/api/persons', (request, response) => {
   const body = request.body
-
+  // 3.6 error handling for creating new entries
   if (!body.name) {
     return response.status(400).json({ 
       error: 'name is missing' 
@@ -76,6 +89,12 @@ app.post('/api/persons', (request, response) => {
   if (!body.number) {
     return response.status(400).json({ 
       error: 'number is missing' 
+    })
+  }
+
+  if (persons.find(person => person.name === body.name)) {
+    return response.status(400).json({ 
+      error: 'name must be unique' 
     })
   }
 
