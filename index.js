@@ -1,6 +1,8 @@
+require('dotenv').config()
 const express = require('express')
 const morgan = require('morgan')
 const cors = require('cors')
+const Person = require('./models/person')
 
 const app = express()
 
@@ -18,7 +20,12 @@ morgan.token('post-data', (req) => {
 
 app.use(morgan(':method :url :status :res[content-length] - :response-time ms :post-data'));
 
-let persons = [
+let persons = [{}]
+
+Person.find({}).then(result => {
+  persons = result
+})
+/*let persons = [
   { 
     "id": 1,
     "name": "Arto Hellas", 
@@ -39,11 +46,13 @@ let persons = [
     "name": "Mary Poppendieck", 
     "number": "39-23-6423122"
   }
-]
+]*/
 
 // 3.1 displaying persons on http://localhost:3001/api/persons
 app.get('/api/persons', (request, response) => {
-  response.json(persons)
+  Person.find({}).then(persons => {
+    response.json(persons)
+  })
 })
 
 // 3.2 displaying number of persons and date on http://localhost:3001/info
@@ -55,60 +64,78 @@ app.get('/info', (request, response) => {
 
 // 3.3 displaying the information for a single phonebook entry
 app.get('/api/persons/:id', (request, response) => {
-  const id = Number(request.params.id)
-  const person = persons.find(person => person.id === id)
-  
-  if (person) {
-    response.json(person)
-  } else {
-    response.status(404).end()
-  }
+  Person.findById(request.params.id)
+    .then(person => {
+      if (person) {
+        response.json(person)
+        console.log(`found the person`);
+      } else {
+        response.status(404).end()
+      }
+    })
+    .catch(error => {
+      console.log(error)
+      response.status(500).end()
+    })
 })
 
 // 3.4 delete a person
-app.delete('/api/persons/:id', (request, response) => {
-  const id = Number(request.params.id)
-  persons = persons.filter(person => person.id !== id)
-
-  response.status(204).end()
+app.delete('/api/persons/:id', (request, response, next) => {
+  Person.findByIdAndRemove(request.params.id)
+    .then(result => {
+      response.status(204).end()
+    })
+    .catch(error => next(error))
 })
 
 // 3.5 add a new person
-const generateId = () => {
+/*const generateId = () => {
   const new_id = Math.floor(Math.random() * 10000)
   return new_id
-}
+}*/
 
 app.post('/api/persons', (request, response) => {
   const body = request.body
+  const person = new Person({
+    name: body.name,
+    number: body.number,
+    /*id: generateId(),*/
+  })
   // 3.6 error handling for creating new entries
   if (!body.name) {
     return response.status(400).json({ 
       error: 'name is missing' 
     })
   }
-
-  if (!body.number) {
+  
+  else if (!body.number) {
     return response.status(400).json({ 
       error: 'number is missing' 
     })
   }
-
-  if (persons.find(person => person.name === body.name)) {
+  
+  else if (persons.find(person => person.name === body.name)) {
     return response.status(400).json({ 
       error: 'name must be unique' 
     })
+  } else {
+    person.save().then(result => {
+      console.log(`added ${person.name} number ${person.number} to phonebook`)
+      response.json(person)
+    })
   }
-
-  const person = {
-    name: body.name,
-    number: body.number,
-    id: generateId(),
-  }
-
-  persons = persons.concat(person)
-  response.json(person)
 })
+
+// 3.16 new error handler middleware
+const errorHandler = (error, request, response, next) => {
+  console.error(error.message)
+  if (error.name === 'CastError') {
+    return response.status(400).send({ error: 'malformatted id' })
+  } 
+  next(error)
+}
+// this has to be the last loaded middleware.
+app.use(errorHandler)
 
 const PORT = process.env.PORT || 3001
 app.listen(PORT, () => {
