@@ -74,7 +74,7 @@ app.get('/api/persons/:id', (request, response) => {
       }
     })
     .catch(error => {
-      console.log(error)
+      /*console.log(error)*/
       response.status(500).end()
     })
 })
@@ -96,20 +96,28 @@ app.delete('/api/persons/:id', (request, response, next) => {
 
 app.put('/api/persons/:id', (request, response, next) => {
   const body = request.body
+  const { name, number } = request.body
 
   const person = {
     name: body.name,
     number: body.number,
   }
 
-  Person.findByIdAndUpdate(request.params.id, person, { new: true })
+  Person.findByIdAndUpdate(request.params.id, 
+    { name, number },
+    { new: true, runValidators: true, context: 'query' })
     .then(updatedPerson => {
       response.json(updatedPerson)
     })
-    .catch(error => next(error))
+    .catch(
+      error => {
+        next(error)
+        /*console.log(error.response.data.error)*/
+      }
+    )
 })
 
-app.post('/api/persons', (request, response) => {
+app.post('/api/persons', (request, response, next) => {
   const body = request.body
   const person = new Person({
     name: body.name,
@@ -128,24 +136,35 @@ app.post('/api/persons', (request, response) => {
       error: 'number is missing' 
     })
   }
-  
+  else if (person.validateSync()) {
+    return response.status(400).json({ 
+      error: person.validateSync().errors['number'].message
+    })
+  }
   else if (persons.find(person => person.name === body.name)) {
     return response.status(400).json({ 
       error: 'name must be unique' 
     })
   } else {
-    person.save().then(result => {
+    person.save()
+    .then(result => {
       console.log(`added ${person.name} number ${person.number} to phonebook`)
       response.json(person)
+    })
+    .catch(error => {
+      next(error)
+      return response.status(400).json({ error: error.message })
     })
   }
 })
 
 // 3.16 new error handler middleware
 const errorHandler = (error, request, response, next) => {
-  console.error(error.message)
+  /*console.error(error.response.data.error)*/
   if (error.name === 'CastError') {
     return response.status(400).send({ error: 'malformatted id' })
+  } else if (error.name === 'ValidationError') {
+    return response.status(400).json({ error: error.message })
   } 
   next(error)
 }
