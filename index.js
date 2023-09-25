@@ -13,12 +13,12 @@ app.use(cors())
 // 3.7-3.8 Show the data sent in HTTP POST requests
 morgan.token('post-data', (req) => {
   if (req.method === 'POST') {
-    return JSON.stringify(req.body);
+    return JSON.stringify(req.body)
   }
-  return ' ';
-});
+  return ' '
+})
 
-app.use(morgan(':method :url :status :res[content-length] - :response-time ms :post-data'));
+app.use(morgan(':method :url :status :res[content-length] - :response-time ms :post-data'))
 
 let persons = [{}]
 
@@ -26,24 +26,24 @@ Person.find({}).then(result => {
   persons = result
 })
 /*let persons = [
-  { 
+  {
     "id": 1,
-    "name": "Arto Hellas", 
+    "name": "Arto Hellas",
     "number": "040-123456"
   },
-  { 
+  {
     "id": 2,
-    "name": "Ada Lovelace", 
+    "name": "Ada Lovelace",
     "number": "39-44-5323523"
   },
-  { 
+  {
     "id": 3,
-    "name": "Dan Abramov", 
+    "name": "Dan Abramov",
     "number": "12-43-234345"
   },
-  { 
+  {
     "id": 4,
-    "name": "Mary Poppendieck", 
+    "name": "Mary Poppendieck",
     "number": "39-23-6423122"
   }
 ]*/
@@ -63,17 +63,18 @@ app.get('/info', (request, response) => {
 })
 
 // 3.3 displaying the information for a single phonebook entry
-app.get('/api/persons/:id', (request, response) => {
+app.get('/api/persons/:id', (request, response, next) => {
   Person.findById(request.params.id)
     .then(person => {
       if (person) {
         response.json(person)
-        console.log(`found the person`);
+        console.log('found the person')
       } else {
         response.status(404).end()
       }
     })
     .catch(error => {
+      next(error)
       /*console.log(error)*/
       response.status(500).end()
     })
@@ -82,7 +83,7 @@ app.get('/api/persons/:id', (request, response) => {
 // 3.4 delete a person
 app.delete('/api/persons/:id', (request, response, next) => {
   Person.findByIdAndRemove(request.params.id)
-    .then(result => {
+    .then(() => {
       response.status(204).end()
     })
     .catch(error => next(error))
@@ -95,15 +96,15 @@ app.delete('/api/persons/:id', (request, response, next) => {
 }*/
 
 app.put('/api/persons/:id', (request, response, next) => {
-  const body = request.body
+  /*const body = request.body*/
   const { name, number } = request.body
 
-  const person = {
+  /*const person = {
     name: body.name,
     number: body.number,
-  }
+  }*/
 
-  Person.findByIdAndUpdate(request.params.id, 
+  Person.findByIdAndUpdate(request.params.id,
     { name, number },
     { new: true, runValidators: true, context: 'query' })
     .then(updatedPerson => {
@@ -126,35 +127,35 @@ app.post('/api/persons', (request, response, next) => {
   })
   // 3.6 error handling for creating new entries
   if (!body.name) {
-    return response.status(400).json({ 
-      error: 'name is missing' 
+    return response.status(400).json({
+      error: 'name is missing'
     })
   }
-  
+
   else if (!body.number) {
-    return response.status(400).json({ 
-      error: 'number is missing' 
+    return response.status(400).json({
+      error: 'number is missing'
     })
   }
   else if (person.validateSync()) {
-    return response.status(400).json({ 
+    return response.status(400).json({
       error: person.validateSync().errors['number'].message
     })
   }
   else if (persons.find(person => person.name === body.name)) {
-    return response.status(400).json({ 
-      error: 'name must be unique' 
+    return response.status(400).json({
+      error: 'name must be unique'
     })
   } else {
     person.save()
-    .then(result => {
-      console.log(`added ${person.name} number ${person.number} to phonebook`)
-      response.json(person)
-    })
-    .catch(error => {
-      next(error)
-      return response.status(400).json({ error: error.message })
-    })
+      .then(() => {
+        console.log(`added ${person.name} number ${person.number} to phonebook`)
+        response.json(person)
+      })
+      .catch(error => {
+        next(error)
+        return response.status(400).json({ error: error.message })
+      })
   }
 })
 
@@ -165,7 +166,7 @@ const errorHandler = (error, request, response, next) => {
     return response.status(400).send({ error: 'malformatted id' })
   } else if (error.name === 'ValidationError') {
     return response.status(400).json({ error: error.message })
-  } 
+  }
   next(error)
 }
 // this has to be the last loaded middleware.
