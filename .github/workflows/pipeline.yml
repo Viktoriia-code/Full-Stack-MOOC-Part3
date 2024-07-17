@@ -51,3 +51,29 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DEFAULT_BUMP: patch
+      
+  deploy_to_render:
+    name: Deploy to Render
+    runs-on: ubuntu-20.04
+    needs: simple_deployment_pipeline
+    if: ${{ github.event_name == 'push' }}
+    steps:
+      - name: Deploy to Render
+        uses: qbaware/render-redeploy-action@v0
+        with:
+          render-api-key: ${{ secrets.RENDER_API_KEY }}
+          render-service-id: ${{ secrets.RENDER_SERVICE_ID }}
+      - name: Deployment success
+        if: success()
+        uses: rjstone/discord-webhook-notify@v1
+        with:
+          severity: info
+          details: Deployment succeeded
+          webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
+      - name: The job has failed
+        if: failure()
+        uses: rjstone/discord-webhook-notify@v1
+        with:
+          severity: error
+          details: Deployment is broken
+          webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
