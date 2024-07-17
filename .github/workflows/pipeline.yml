@@ -21,3 +21,33 @@ jobs:
         run: npm run lint
       - name: build
         run: npm run build:ui
+  
+  tag_release:
+    name: Bump version and push tag
+    runs-on: ubuntu-20.04
+    needs: simple_deployment_pipeline
+    if: ${{ github.event_name == 'push' }}
+    steps:
+      - name: Set env SKIP
+        run: echo "SKIP=$( echo ${{ contains( join(github.event.commits.*.message), '#skip') }} )" >> $GITHUB_ENV
+
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: '0'
+
+      - name: Was there a skip command?
+        run: |
+          if [[ $SKIP == true ]]; then
+            echo "#Skip found"
+          else
+            echo "#Skip not found"
+          fi
+
+      - name: Update version number
+        if: env.SKIP != 'true'
+        uses: anothrNick/github-tag-action@1.70.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEFAULT_BUMP: patch
