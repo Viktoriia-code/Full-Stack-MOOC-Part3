@@ -70,10 +70,10 @@ jobs:
           severity: info
           details: Deployment succeeded
           webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
-      ##- name: The job has failed
-        ##if: failure()
-        ##uses: rjstone/discord-webhook-notify@v1
-        ##with:
-          ##severity: error
-          ##details: Deployment is broken
-          ##webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
+      - name: The job has failed
+        if: failure()
+        uses: rjstone/discord-webhook-notify@v1
+        with:
+          severity: error
+          details: Deployment is broken
+          webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
